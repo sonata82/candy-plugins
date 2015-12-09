@@ -9,6 +9,9 @@
 var CandyShop = (function(self) { return self; }(CandyShop || {}));
 
 CandyShop.StaticLobby = (function(self, Candy, $) {
+
+  var usersInFakeLobby = {};
+
   /**
    * Initializes the Static Lobby plugin with the default settings.
    */
@@ -34,11 +37,50 @@ CandyShop.StaticLobby = (function(self, Candy, $) {
                                callback: function() { CandyShop.StaticLobby.inviteToModal(obj.roomJid, obj.user); }
                                 };
     });
+
+    $(Candy).on('candy:core.presence', self.updateUserInFakeLobby);
+    $(Candy).on('candy:view.roster.after-update', self.addClickHandler);
   };
+
+  self.updateUserInFakeLobby = function (event, args) {
+    var realJid = args.from,
+        type = args.stanza.attr('type'),
+        bareJid = Strophe.getBareJidFromJid(args.from),
+        user = bareJid ? usersInFakeLobby[bareJid] : undefined;
+
+    if ((!type || type !== 'unavailable') && user !== undefined) {
+      // update to latest realJid
+      console.log('-----------------------------------------');
+      user.data.realJid = realJid;
+      console.log(user);
+      Candy.View.Pane.Roster.update(self.getLobbyFakeJid(), user, 'join', Candy.Core.getUser('me'));   
+    }
+  };
+
+  self.addClickHandler = function (event, args) {
+    console.log('adding click handler');
+    var elem = args.element;
+
+    Candy.View.Pane.Roster.joinAnimation($(elem).attr('id'));   
+
+    elem.unbind('click', Candy.View.Pane.Roster.userClick);
+
+    elem.click(function () {
+      console.log('clicking!');
+      var targetJid, 
+          e = $(this),
+          realJid = e.attr('data-real-jid');
+
+      if (realJid) {
+          targetJid = Strophe.getBareJidFromJid(realJid);
+          Candy.View.Pane.PrivateRoom.open(targetJid, e.attr('data-nick'), true, true);
+      }
+    });
+  }
 
   // Create a fake jid for the lobby so that other parts of candy don't fail on .replace() commands.
   self.getLobbyFakeJid = function(){
-    if(self.lobbyFakeJid === null) {
+    if(!self.lobbyFakeJid) {
       var guid = (function() {
         function s4() {
           return Math.floor((1 + Math.random()) * 0x10000)
@@ -68,9 +110,11 @@ CandyShop.StaticLobby = (function(self, Candy, $) {
         }
         try {
           Candy.View.Pane.Roster.update(self.getLobbyFakeJid(), user, 'join', Candy.Core.getUser('me'));
+          usersInFakeLobby[iq[i].jid] = user;
         } catch(er) {
           console.log('Error updating lobby roster: ' + er.message);
         }
+
       }
       return true;
     });
