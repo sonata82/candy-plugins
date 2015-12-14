@@ -39,7 +39,6 @@ CandyShop.StaticLobby = (function(self, Candy, $) {
     });
 
     $(Candy).on('candy:core.presence', self.updateUserInFakeLobby);
-    $(Candy).on('candy:view.roster.after-update', self.addClickHandler);
   };
 
   self.updateUserInFakeLobby = function (event, args) {
@@ -48,34 +47,50 @@ CandyShop.StaticLobby = (function(self, Candy, $) {
         bareJid = Strophe.getBareJidFromJid(args.from),
         user = bareJid ? usersInFakeLobby[bareJid] : undefined;
 
-    if ((!type || type !== 'unavailable') && user !== undefined) {
-      // update to latest realJid
-      console.log('-----------------------------------------');
-      user.data.realJid = realJid;
-      console.log(user);
-      Candy.View.Pane.Roster.update(self.getLobbyFakeJid(), user, 'join', Candy.Core.getUser('me'));   
+    if (user !== undefined) {
+      if (!type || type !== 'unavailable') {
+        // update to latest realJid
+        console.log('-----------------------------------------');
+        user.data.realJid = realJid;
+        user.setStatus('available');
+        console.log(user);
+        Candy.View.Pane.Roster.update(self.getLobbyFakeJid(), user, 'join', Candy.Core.getUser('me'));
+      } else {
+        console.log('*****************************************');
+        console.log('user is unavailable');
+        user.data.realJid = undefined;
+        user.setStatus('unavailable');
+        Candy.View.Pane.Roster.update(self.getLobbyFakeJid(), user, 'join', Candy.Core.getUser('me'));
+      }
     }
   };
 
   self.addClickHandler = function (event, args) {
-    console.log('adding click handler');
-    var elem = args.element;
+    var elem = args.element,
+        userJid = args.user.getJid();
 
-    Candy.View.Pane.Roster.joinAnimation($(elem).attr('id'));   
+    if (args.roomJid === self.getLobbyFakeJid()) {
+      if (args.action === 'join') {
+        Candy.View.Pane.Roster.joinAnimation($(elem).attr('id'));
 
-    elem.unbind('click', Candy.View.Pane.Roster.userClick);
+        console.log('adding click handler for', userJid);
 
-    elem.click(function () {
-      console.log('clicking!');
-      var targetJid, 
-          e = $(this),
-          realJid = e.attr('data-real-jid');
+        elem.unbind('click', Candy.View.Pane.Roster.userClick);          
 
-      if (realJid) {
-          targetJid = Strophe.getBareJidFromJid(realJid);
-          Candy.View.Pane.PrivateRoom.open(targetJid, e.attr('data-nick'), true, true);
+        elem.click(self.userClick);
       }
-    });
+    }
+  };
+
+  self.userClick = function () {
+    var targetJid,
+        e = $(this),
+        realJid = e.attr('data-real-jid');
+
+    if (realJid) {
+      targetJid = Strophe.getBareJidFromJid(realJid);
+      Candy.View.Pane.PrivateRoom.open(targetJid, e.attr('data-nick'), true, true);
+    }
   }
 
   // Create a fake jid for the lobby so that other parts of candy don't fail on .replace() commands.
@@ -116,6 +131,7 @@ CandyShop.StaticLobby = (function(self, Candy, $) {
         }
 
       }
+      $(Candy).on('candy:view.roster.after-update', self.addClickHandler);
       return true;
     });
   };
