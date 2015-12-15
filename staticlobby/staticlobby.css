@@ -11,3 +11,13 @@
  #chat-modal-body .room-invite:hover {
   font-weight: bold;
  }
+
+ .roomtype-lobby div[data-status="unavailable"] div {
+  padding-left: 20px;
+  background: url(bullet_red.png) no-repeat;
+ }
+
+ .roomtype-lobby div[data-status="available"] div {
+  padding-left: 20px;
+  background: url(bullet_green.png) no-repeat;
+ }
