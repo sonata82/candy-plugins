@@ -45,7 +45,10 @@ CandyShop.ChatRecall = (function(self, Candy, $) {
         $.extend(true, _options, options);
 
         // Listen for keydown in the field
-        $(document).on('keydown', 'input[name="message"]', function(e) {
+        $(document).on('keydown', 'textarea[name="message"]', function(e) {
+            if (!e.ctrlKey) {
+                return;
+            }
             // switch on the key code
             switch (e.which) {
                 // up arrow
@@ -91,7 +94,11 @@ CandyShop.ChatRecall = (function(self, Candy, $) {
         // listen before send and add it to the stack
         $(Candy).on('candy:view.message.before-send', function(e, data) {
             // remove, in case there is the colors plugin, the |c:number| prefix
-            self.addMessage(data.message.replace(/\|c:\d+\|/i, ''));
+            var message = data.message.replace(/\|c:\d+\|/i, '');
+            // ignore empty messages
+            if (message.length > 0) {
+                self.addMessage(message);
+            }
         });
     };
 
